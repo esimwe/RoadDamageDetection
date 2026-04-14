@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from datetime import datetime, timedelta
+import warnings
 import jwt
+warnings.filterwarnings("ignore", category=jwt.warnings.RemovedInPyjwt3Warning if hasattr(jwt, 'warnings') else UserWarning)
+from cryptography.hazmat.primitives import hashes
 import bcrypt
 import asyncpg
 import os
