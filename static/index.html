@@ -620,41 +620,73 @@ const araclar = [
 // ══════════════════════════════════
 // LOGIN
 // ══════════════════════════════════
+const API_URL = '/api';
 let aktifKullanici = '';
-function girisYap() {
-  const k = document.getElementById('login-kullanici').value;
+let aktifToken = '';
+
+function panelAc(kullanici_adi, ad_soyad, token) {
+  aktifKullanici = kullanici_adi;
+  aktifToken = token;
+  localStorage.setItem('bbb_token', token);
+  localStorage.setItem('bbb_kullanici', kullanici_adi);
+  document.getElementById('kullanici-adi').textContent = ad_soyad || kullanici_adi;
+  document.getElementById('login-overlay').classList.add('gizli');
+  document.getElementById('login-hata').classList.remove('gorünür');
+  setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
+  grafiklerOlustur();
+}
+
+async function girisYap() {
+  const k = document.getElementById('login-kullanici').value.trim();
   const s = document.getElementById('login-sifre').value;
   const hata = document.getElementById('login-hata');
-  const kullanicilar = [{ad:'admin',sifre:'bursa2026'},{ad:'mudur',sifre:'bursa2026'},{ad:'teknisyen1',sifre:'bursa2026'}];
-  const gecerli = kullanicilar.find(u => u.ad === k && u.sifre === s);
-  if (gecerli) {
-    aktifKullanici = k;
-    localStorage.setItem('bbb_kullanici', k);
-    document.getElementById('kullanici-adi').textContent = k;
-    document.getElementById('login-overlay').classList.add('gizli');
-    hata.classList.remove('gorünür');
-    setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
-    grafiklerOlustur();
-  } else {
+  const btn = document.querySelector('.login-btn');
+  if (!k || !s) { hata.textContent = 'Kullanıcı adı ve şifre giriniz.'; hata.classList.add('gorünür'); return; }
+  btn.disabled = true; btn.textContent = 'Giriş yapılıyor...';
+  try {
+    const res = await fetch(API_URL + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kullanici_adi: k, sifre: s })
+    });
+    const veri = await res.json();
+    if (res.ok) {
+      panelAc(veri.kullanici_adi, veri.ad_soyad, veri.token);
+    } else {
+      hata.textContent = veri.detail || 'Kullanıcı adı veya şifre hatalı.';
+      hata.classList.add('gorünür');
+    }
+  } catch (e) {
+    hata.textContent = 'Sunucuya bağlanılamadı.';
     hata.classList.add('gorünür');
   }
+  btn.disabled = false; btn.textContent = 'Giriş Yap';
 }
+
 function cikisYap() {
+  localStorage.removeItem('bbb_token');
   localStorage.removeItem('bbb_kullanici');
+  aktifToken = '';
+  aktifKullanici = '';
   document.getElementById('login-overlay').classList.remove('gizli');
   document.getElementById('login-kullanici').value = '';
   document.getElementById('login-sifre').value = '';
 }
-// Sayfa yüklenince session kontrol et
-(function() {
-  const k = localStorage.getItem('bbb_kullanici');
-  if (k) {
-    aktifKullanici = k;
-    document.getElementById('kullanici-adi').textContent = k;
-    document.getElementById('login-overlay').classList.add('gizli');
-    setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
-    grafiklerOlustur();
-  }
+
+// Sayfa yüklenince token kontrol et
+(async function() {
+  const token = localStorage.getItem('bbb_token');
+  if (!token) return;
+  try {
+    const res = await fetch(API_URL + '/me', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (res.ok) {
+      const veri = await res.json();
+      panelAc(veri.kullanici_adi, veri.ad_soyad, token);
+    } else {
+      localStorage.removeItem('bbb_token');
+      localStorage.removeItem('bbb_kullanici');
+    }
+  } catch (e) { /* sunucu yoksa sessiz geç */ }
 })();
 
 // ══════════════════════════════════
