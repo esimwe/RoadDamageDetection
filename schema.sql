@@ -93,7 +93,7 @@ CREATE TABLE detection_notes (
     id SERIAL PRIMARY KEY,
     detection_id INTEGER REFERENCES detections(id),
     user_id INTEGER REFERENCES users(id),
-    not TEXT NOT NULL,
+    yorum TEXT NOT NULL,
     timestamp TIMESTAMP DEFAULT NOW()
 );
 
