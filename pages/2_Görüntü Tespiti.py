@@ -9,7 +9,7 @@ import streamlit as st
 
 # Deep learning framework
 from ultralytics import YOLO
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 
 from sample_utils.download import download_file
@@ -48,6 +48,45 @@ CLASSES = [
     "Ağ Çatlağı",
     "Çukur"
 ]
+
+COLORS = {
+    0: (0, 255, 0),
+    1: (255, 165, 0),
+    2: (255, 0, 0),
+    3: (255, 0, 255),
+}
+
+FONT_PATHS = [
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+]
+_pil_font = ImageFont.load_default()
+for _fp in FONT_PATHS:
+    try:
+        _pil_font = ImageFont.truetype(_fp, 20)
+        break
+    except:
+        continue
+
+def draw_detections(img_bgr, detections, w_ori, h_ori):
+    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+    pil_img = Image.fromarray(img_rgb)
+    draw = ImageDraw.Draw(pil_img)
+    sx = w_ori / 640
+    sy = h_ori / 640
+    for det in detections:
+        color = COLORS.get(det.class_id, (255, 255, 255))
+        x1 = int(det.box[0] * sx)
+        y1 = int(det.box[1] * sy)
+        x2 = int(det.box[2] * sx)
+        y2 = int(det.box[3] * sy)
+        draw.rectangle([(x1, y1), (x2, y2)], outline=color, width=2)
+        text = f"{det.label} %{int(det.score*100)}"
+        bbox = draw.textbbox((x1, max(y1 - 26, 0)), text, font=_pil_font)
+        draw.rectangle(bbox, fill=color)
+        draw.text((x1, max(y1 - 26, 0)), text, font=_pil_font, fill=(255, 255, 255))
+    return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
 
 class Detection(NamedTuple):
     class_id: int
@@ -91,8 +130,7 @@ if image_file is not None:
             for _box in boxes
         ]
 
-    annotated_frame = results[0].plot()
-    _image_pred = cv2.resize(annotated_frame, (w_ori, h_ori), interpolation = cv2.INTER_AREA)
+    _image_pred = draw_detections(image_resized, detections, w_ori, h_ori)
 
     # Original Image
     with col1:
