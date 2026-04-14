@@ -15,6 +15,7 @@ from ultralytics import YOLO
 
 from sample_utils.download import download_file
 from sample_utils.get_STUNServer import getSTUNServer
+from sample_utils.auth import session_kontrol
 
 st.set_page_config(
     page_title="Gerçek Zamanlı Tespit",
@@ -22,6 +23,8 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
+
+session_kontrol()
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent

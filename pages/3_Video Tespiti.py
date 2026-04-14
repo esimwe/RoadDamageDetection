@@ -12,6 +12,7 @@ from ultralytics import YOLO
 from PIL import Image, ImageDraw, ImageFont
 
 from sample_utils.download import download_file
+from sample_utils.auth import session_kontrol
 
 st.set_page_config(
     page_title="Video Tespiti",
@@ -19,6 +20,8 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded"
 )
+
+session_kontrol()
 
 HERE = Path(__file__).parent
 ROOT = HERE.parent
