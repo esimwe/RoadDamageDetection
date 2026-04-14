@@ -608,14 +608,7 @@ const hasarlar = [
   {id:10,tip:"Timsah Derisi Çatlak",seviye:"kritik",adres:"Yıldırım, Hürriyet Mah.",tarih:"14.04.2026 04:45",koordinat:[40.2100,29.0700],arac:"16 BUS 044",guveni:"%93",boyut:"Büyük (>30cm)",durum:"Bekliyor"},
 ];
 
-const araclar = [
-  {id:1,plaka:"16 BUS 042",durum:"Aktif",rota:"Nilüfer Hattı",tespit:14,konum:[40.2121,28.9779]},
-  {id:2,plaka:"16 BUS 017",durum:"Aktif",rota:"Osmangazi Hattı",tespit:9,konum:[40.1956,29.0601]},
-  {id:3,plaka:"16 BUS 031",durum:"Aktif",rota:"Yıldırım Hattı",tespit:11,konum:[40.2033,29.0812]},
-  {id:4,plaka:"16 BUS 008",durum:"Bekliyor",rota:"Beşevler Hattı",tespit:6,konum:[40.2287,28.9942]},
-  {id:5,plaka:"16 BUS 055",durum:"Aktif",rota:"Merkez Hattı",tespit:8,konum:[40.1834,29.0501]},
-  {id:6,plaka:"16 BUS 022",durum:"Aktif",rota:"Mudanya Hattı",tespit:5,konum:[40.2401,28.9201]},
-];
+let araclar = [];
 
 // ══════════════════════════════════
 // LOGIN
@@ -634,6 +627,7 @@ function panelAc(kullanici_adi, ad_soyad, token) {
   document.getElementById('login-hata').classList.remove('gorünür');
   setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
   grafiklerOlustur();
+  araclariYukle();
 }
 
 async function girisYap() {
@@ -808,17 +802,52 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
 
 const aracIkon = L.divIcon({className:'',html:`<div style="width:28px;height:28px;border-radius:50%;background:#0066cc;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:14px">🚌</div>`,iconSize:[28,28],iconAnchor:[14,14]});
 
-const aracListesi = document.getElementById('arac-listesi');
-araclar.forEach(a => {
-  L.marker(a.konum, {icon: aracIkon}).addTo(haritaArac)
-    .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${a.plaka}</div><div class="popup-satir">🛣️ ${a.rota}</div><div class="popup-satir">📍 ${a.tespit} tespit</div></div>`);
+const aracListesiEl = document.getElementById('arac-listesi');
+const aracMarkerlar = {};
 
-  const div = document.createElement('div');
-  div.className = 'arac-item';
-  div.innerHTML = `<div class="arac-ust"><span class="arac-plaka">${a.plaka}</span><span class="arac-durum ${a.durum==='Aktif'?'durum-aktif':'durum-bekliyor'}">${a.durum}</span></div><div class="arac-bilgi">🛣️ ${a.rota} · 📍 ${a.tespit} tespit</div>`;
-  div.onclick = () => { haritaArac.setView(a.konum, 15); document.querySelectorAll('.arac-item').forEach(x=>x.classList.remove('aktif-arac')); div.classList.add('aktif-arac'); };
-  aracListesi.appendChild(div);
-});
+function aracListesiOlustur(liste) {
+  aracListesiEl.innerHTML = '';
+  Object.values(aracMarkerlar).forEach(m => haritaArac.removeLayer(m));
+  Object.keys(aracMarkerlar).forEach(k => delete aracMarkerlar[k]);
+
+  document.querySelector('.arac-panel-baslik').textContent = `🚌 Aktif Araçlar (${liste.filter(a=>a.aktif).length})`;
+
+  liste.forEach(a => {
+    const konum = (a.son_lat && a.son_lon) ? [a.son_lat, a.son_lon] : null;
+    const durum = konum ? 'Aktif' : 'Bekliyor';
+
+    if (konum) {
+      const m = L.marker(konum, {icon: aracIkon}).addTo(haritaArac)
+        .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${a.plaka}</div><div class="popup-satir">🚌 ${a.model || ''}</div><div class="popup-satir">📡 Son konum</div></div>`);
+      aracMarkerlar[a.id] = m;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'arac-item';
+    div.innerHTML = `<div class="arac-ust"><span class="arac-plaka">${a.plaka}</span><span class="arac-durum ${durum==='Aktif'?'durum-aktif':'durum-bekliyor'}">${durum}</span></div><div class="arac-bilgi">🚌 ${a.model || 'Bilinmiyor'} · ${a.yil || ''}</div>`;
+    div.onclick = () => {
+      document.querySelectorAll('.arac-item').forEach(x=>x.classList.remove('aktif-arac'));
+      div.classList.add('aktif-arac');
+      if (konum) haritaArac.setView(konum, 15);
+    };
+    aracListesiEl.appendChild(div);
+  });
+}
+
+async function araclariYukle() {
+  if (!aktifToken) return;
+  try {
+    const res = await fetch(API_URL + '/vehicles', {
+      headers: { 'Authorization': 'Bearer ' + aktifToken }
+    });
+    if (res.ok) {
+      araclar = await res.json();
+      aracListesiOlustur(araclar);
+    }
+  } catch(e) {
+    aracListesiEl.innerHTML = '<div style="padding:12px;font-size:12px;color:#6b7a99">Araç listesi yüklenemedi.</div>';
+  }
+}
 
 // ══════════════════════════════════
 // DASHBOARD TABLO
