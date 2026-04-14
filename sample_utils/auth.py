@@ -1,26 +1,55 @@
 import streamlit as st
 import requests
+from streamlit_cookies_manager import EncryptedCookieManager
 
 API_URL = "http://127.0.0.1:8502/api"
+COOKIE_PASSWORD = "bbb-yol-hasar-cookie-2026"
+
+def _get_cookies():
+    cookies = EncryptedCookieManager(prefix="bbb_", password=COOKIE_PASSWORD)
+    if not cookies.ready():
+        st.stop()
+    return cookies
 
 def session_kontrol():
     """Her sayfanın başında çağrılır. Login yoksa login ekranı gösterir, varsa devam eder."""
+    cookies = _get_cookies()
+
+    # Cookie'den session_state'e yükle
     if "token" not in st.session_state:
-        st.session_state.token = None
+        st.session_state.token = cookies.get("token") or None
     if "kullanici" not in st.session_state:
-        st.session_state.kullanici = None
+        import json
+        raw = cookies.get("kullanici")
+        st.session_state.kullanici = json.loads(raw) if raw else None
     if "secilen_arac" not in st.session_state:
-        st.session_state.secilen_arac = None
+        import json
+        raw = cookies.get("secilen_arac")
+        st.session_state.secilen_arac = json.loads(raw) if raw else None
+
+    # Token varsa API'den doğrula
+    if st.session_state.token:
+        try:
+            res = requests.get(
+                f"{API_URL}/me",
+                headers={"Authorization": f"Bearer {st.session_state.token}"},
+                timeout=3
+            )
+            if res.status_code != 200:
+                _cikis(cookies)
+                return
+        except Exception:
+            pass  # API erişilemiyorsa mevcut token'la devam et
 
     if not st.session_state.token:
-        _login_ekrani()
+        _login_ekrani(cookies)
         st.stop()
 
     if not st.session_state.secilen_arac:
-        _arac_secim_ekrani()
+        _arac_secim_ekrani(cookies)
         st.stop()
 
-def _login_ekrani():
+def _login_ekrani(cookies):
     st.title("🛣️ Yol Hasar Tespit Sistemi")
     st.caption("Bursa Büyükşehir Belediyesi")
     st.divider()
@@ -44,16 +73,20 @@ def _login_ekrani():
                             timeout=5
                         )
                         if res.status_code == 200:
+                            import json
                             veri = res.json()
                             st.session_state.token = veri["token"]
                             st.session_state.kullanici = veri
+                            cookies["token"] = veri["token"]
+                            cookies["kullanici"] = json.dumps(veri)
+                            cookies.save()
                             st.rerun()
                         else:
                             st.error("Kullanıcı adı veya şifre hatalı.")
                     except Exception:
                         st.error("Sunucuya bağlanılamadı.")
 
-def _arac_secim_ekrani():
+def _arac_secim_ekrani(cookies):
     k = st.session_state.kullanici
     st.title("🚌 Araç Seçimi")
     st.caption(f"Hoşgeldiniz, {k.get('ad_soyad') or k.get('kullanici_adi')}")
@@ -70,14 +103,17 @@ def _arac_secim_ekrani():
             if not araclar:
                 st.warning("Sistemde kayıtlı aktif araç bulunmuyor.")
                 if st.button("Çıkış Yap"):
-                    _cikis()
+                    _cikis(cookies)
                 return
 
             secenekler = {f"{a['plaka']} — {a['model'] or 'Bilinmiyor'}": a for a in araclar}
             secim = st.selectbox("Kullandığınız aracı seçin:", list(secenekler.keys()))
 
             if st.button("Devam Et", use_container_width=True):
+                import json
                 st.session_state.secilen_arac = secenekler[secim]
+                cookies["secilen_arac"] = json.dumps(secenekler[secim])
+                cookies.save()
                 st.rerun()
         else:
             st.error("Araç listesi alınamadı.")
@@ -86,9 +122,15 @@ def _arac_secim_ekrani():
 
     st.divider()
     if st.button("Çıkış Yap"):
-        _cikis()
+        _cikis(cookies)
 
-def _cikis():
+def _cikis(cookies=None):
+    if cookies is None:
+        cookies = _get_cookies()
+    cookies["token"] = ""
+    cookies["kullanici"] = ""
+    cookies["secilen_arac"] = ""
+    cookies.save()
     st.session_state.token = None
     st.session_state.kullanici = None
     st.session_state.secilen_arac = None
