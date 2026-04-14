@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 DB_DSN = os.getenv("DATABASE_URL", "postgresql://turna@localhost:5432/yol_hasar")
-JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026")
+JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026-bursa")
 JWT_EXP_HOURS = 8
 
 security = HTTPBearer()
