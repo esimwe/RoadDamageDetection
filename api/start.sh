@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /opt/yol/api
+cd /opt/yol/RoadDamageDetection/api
 source /opt/yol/rdd/bin/activate
 export DATABASE_URL="postgresql://turna@127.0.0.1:5432/yol_hasar"
 export JWT_SECRET="yol-hasar-gizli-anahtar-2026"
