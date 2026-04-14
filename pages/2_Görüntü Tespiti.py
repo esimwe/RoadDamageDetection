@@ -37,7 +37,9 @@ if cache_key in st.session_state:
     net = st.session_state[cache_key]
 else:
     net = YOLO(MODEL_LOCAL_PATH)
-    net.to("mps")
+    import torch
+    device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+    net.to(device)
     st.session_state[cache_key] = net
 
 CLASSES = [
