@@ -78,11 +78,18 @@ COLORS = {
     3: (255, 0, 255),  # Çukur - mor
 }
 
-FONT_PATH = "/System/Library/Fonts/Supplemental/Arial Unicode.ttf"
-try:
-    _pil_font = ImageFont.truetype(FONT_PATH, 20)
-except:
-    _pil_font = ImageFont.load_default()
+FONT_PATHS = [
+    "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",  # macOS
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",       # Linux
+    "/usr/share/fonts/dejavu/DejaVuSans.ttf",                # bazı Linux dağıtımları
+]
+_pil_font = ImageFont.load_default()
+for FONT_PATH in FONT_PATHS:
+    try:
+        _pil_font = ImageFont.truetype(FONT_PATH, 20)
+        break
+    except:
+        continue
 
 def draw_text_turkish(img_bgr, text, x, y, color):
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
