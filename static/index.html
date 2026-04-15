@@ -181,6 +181,31 @@
     .arac-harita-alan { flex: 1; position: relative; }
 
     /* ════════════════════════════
+       ARAÇ MODAL
+    ════════════════════════════ */
+    #arac-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+    #arac-modal-overlay.acik { display:flex; }
+    #arac-modal { background:white; border-radius:12px; width:520px; max-width:95vw; box-shadow:0 8px 32px rgba(0,0,0,0.2); overflow:hidden; }
+    .arac-modal-baslik { display:flex; justify-content:space-between; align-items:center; padding:16px 20px; border-bottom:1px solid #eee; }
+    .arac-modal-baslik h3 { font-size:15px; font-weight:700; margin:0; }
+    .arac-modal-kapat { background:none; border:none; font-size:20px; cursor:pointer; color:#6b7a99; }
+    .arac-modal-tabs { display:flex; border-bottom:1px solid #eee; }
+    .arac-modal-tab { flex:1; padding:10px; text-align:center; font-size:12px; font-weight:600; cursor:pointer; color:#6b7a99; border:none; background:none; border-bottom:2px solid transparent; }
+    .arac-modal-tab.aktif { color:#0066cc; border-bottom-color:#0066cc; }
+    .arac-modal-icerik { padding:20px; min-height:200px; }
+    .arac-bilgi-satir { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f4f8; font-size:13px; }
+    .arac-bilgi-satir:last-child { border-bottom:none; }
+    .arac-bilgi-etiket { color:#6b7a99; }
+    .arac-bilgi-deger { font-weight:600; }
+    .kamera-alan { background:#111; border-radius:8px; height:240px; display:flex; align-items:center; justify-content:center; color:#aaa; font-size:13px; flex-direction:column; gap:8px; }
+    .arac-modal-btn { width:100%; padding:10px; border-radius:8px; border:none; font-size:13px; font-weight:600; cursor:pointer; margin-top:8px; }
+    .arac-modal-btn.mavi { background:#0066cc; color:white; }
+    .arac-modal-btn.mavi:hover { background:#0055aa; }
+    .arac-modal-btn.yesil { background:#2e7d32; color:white; }
+    .arac-modal-btn.yesil:hover { background:#1b5e20; }
+    .snapshot-img { width:100%; border-radius:8px; margin-top:8px; }
+
+    /* ════════════════════════════
        RAPORLAR SAYFASI
     ════════════════════════════ */
     #sayfa-raporlar { flex-direction: column; overflow-y: auto; padding: 20px; gap: 16px; }
@@ -484,6 +509,22 @@
       </div>
       <div class="arac-harita-alan">
         <div id="harita-arac"></div>
+      </div>
+    </div>
+
+    <!-- ════ ARAÇ MODAL ════ -->
+    <div id="arac-modal-overlay" onclick="if(event.target===this)aracModalKapat()">
+      <div id="arac-modal">
+        <div class="arac-modal-baslik">
+          <h3 id="arac-modal-plaka">Araç Detayı</h3>
+          <button class="arac-modal-kapat" onclick="aracModalKapat()">✕</button>
+        </div>
+        <div class="arac-modal-tabs">
+          <button class="arac-modal-tab aktif" onclick="aracModalTab('bilgi',this)">Bilgi</button>
+          <button class="arac-modal-tab" onclick="aracModalTab('kamera',this)">Canlı Görüntü</button>
+          <button class="arac-modal-tab" onclick="aracModalTab('snapshot',this)">Anlık Görüntü</button>
+        </div>
+        <div class="arac-modal-icerik" id="arac-modal-icerik"></div>
       </div>
     </div>
 
@@ -829,6 +870,7 @@ function aracListesiOlustur(liste) {
       document.querySelectorAll('.arac-item').forEach(x=>x.classList.remove('aktif-arac'));
       div.classList.add('aktif-arac');
       if (konum) haritaArac.setView(konum, 15);
+      aracModalAc(a);
     };
     aracListesiEl.appendChild(div);
   });
@@ -847,6 +889,89 @@ async function araclariYukle() {
   } catch(e) {
     aracListesiEl.innerHTML = '<div style="padding:12px;font-size:12px;color:#6b7a99">Araç listesi yüklenemedi.</div>';
   }
+}
+
+// ══════════════════════════════════
+// ARAÇ MODAL
+// ══════════════════════════════════
+let aktifArac = null;
+
+function aracModalAc(a) {
+  aktifArac = a;
+  document.getElementById('arac-modal-plaka').textContent = '🚌 ' + a.plaka;
+  document.getElementById('arac-modal-overlay').classList.add('acik');
+  // varsayılan tab
+  document.querySelectorAll('.arac-modal-tab').forEach(t => t.classList.remove('aktif'));
+  document.querySelector('.arac-modal-tab').classList.add('aktif');
+  aracModalTabIcerik('bilgi');
+}
+
+function aracModalKapat() {
+  document.getElementById('arac-modal-overlay').classList.remove('acik');
+  aktifArac = null;
+}
+
+function aracModalTab(tab, el) {
+  document.querySelectorAll('.arac-modal-tab').forEach(t => t.classList.remove('aktif'));
+  el.classList.add('aktif');
+  aracModalTabIcerik(tab);
+}
+
+function aracModalTabIcerik(tab) {
+  const a = aktifArac;
+  const el = document.getElementById('arac-modal-icerik');
+  if (tab === 'bilgi') {
+    const sonGorulme = a.son_gorulme ? new Date(a.son_gorulme).toLocaleString('tr-TR') : 'Bilinmiyor';
+    const konum = (a.son_lat && a.son_lon) ? `${parseFloat(a.son_lat).toFixed(5)}, ${parseFloat(a.son_lon).toFixed(5)}` : 'Konum yok';
+    el.innerHTML = `
+      <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Plaka</span><span class="arac-bilgi-deger">${a.plaka}</span></div>
+      <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Model</span><span class="arac-bilgi-deger">${a.model || 'Bilinmiyor'}</span></div>
+      <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Durum</span><span class="arac-bilgi-deger">${a.aktif ? '🟢 Aktif' : '🔴 Pasif'}</span></div>
+      <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Son Konum</span><span class="arac-bilgi-deger">${konum}</span></div>
+      <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Son Görülme</span><span class="arac-bilgi-deger">${sonGorulme}</span></div>
+    `;
+  } else if (tab === 'kamera') {
+    el.innerHTML = `
+      <div class="kamera-alan" id="kamera-alan">
+        <span style="font-size:32px">📷</span>
+        <span>Canlı görüntü bağlantısı kuruluyor...</span>
+        <span style="font-size:11px;color:#666">Araç kamerası aktif olmalı</span>
+      </div>
+      <button class="arac-modal-btn mavi" style="margin-top:12px" onclick="kameraBaglan()">Kameraya Bağlan</button>
+    `;
+  } else if (tab === 'snapshot') {
+    el.innerHTML = `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:40px;margin-bottom:8px">📸</div>
+        <div style="font-size:13px;color:#6b7a99;margin-bottom:16px">Araç kamerasından anlık görüntü alın</div>
+        <button class="arac-modal-btn yesil" onclick="snapshotAl()">Anlık Görüntü Al</button>
+        <div id="snapshot-sonuc"></div>
+      </div>
+    `;
+  }
+}
+
+function kameraBaglan() {
+  document.getElementById('kamera-alan').innerHTML = `
+    <span style="font-size:32px">📡</span>
+    <span>Kamera bağlantısı için LiveKit entegrasyonu gerekli</span>
+    <span style="font-size:11px;color:#888">Araç ID: ${aktifArac.id}</span>
+  `;
+}
+
+async function snapshotAl() {
+  const btn = document.querySelector('#arac-modal-icerik .arac-modal-btn');
+  btn.textContent = 'Alınıyor...';
+  btn.disabled = true;
+  // Gerçek snapshot endpoint'i eklenince burası güncellenecek
+  setTimeout(() => {
+    document.getElementById('snapshot-sonuc').innerHTML = `
+      <div style="margin-top:12px;padding:10px;background:#f8fafc;border-radius:8px;font-size:12px;color:#6b7a99">
+        Snapshot endpoint henüz bağlı değil. API'ye /api/vehicles/${aktifArac.id}/snapshot eklenmeli.
+      </div>`;
+    btn.textContent = 'Anlık Görüntü Al';
+    btn.disabled = false;
+  }, 1000);
 }
 
 // ══════════════════════════════════
