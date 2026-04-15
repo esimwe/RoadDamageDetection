@@ -198,6 +198,23 @@ async def livekit_token_publish(vehicle_id: int, kullanici=Depends(token_dogrula
         .to_jwt()
     return {"token": token, "url": LIVEKIT_URL, "room": oda_adi}
 
+@app.get("/api/vehicles/{vehicle_id}/snapshot")
+async def snapshot_al(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    from livekit.api import LiveKitAPI
+    arac = await db.fetchrow("SELECT plaka FROM vehicles WHERE id = $1", vehicle_id)
+    if not arac:
+        raise HTTPException(status_code=404, detail="Araç bulunamadı")
+    oda_adi = f"arac-{arac['plaka'].replace(' ', '-')}"
+    try:
+        async with LiveKitAPI(LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET) as lk:
+            from livekit.api import proto_room
+            oda = await lk.room.get_room(proto_room.GetRoomRequest(room=oda_adi))
+            if not oda:
+                raise HTTPException(status_code=404, detail="Araç yayın yapmıyor")
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Araç kamerası aktif değil: {str(e)}")
+    return {"snapshot_url": None, "mesaj": "Snapshot için araç kamerasının aktif olması gerekiyor"}
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "zaman": datetime.utcnow().isoformat()}
