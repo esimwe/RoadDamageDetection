@@ -43,8 +43,10 @@ MODEL_LOCAL_PATH = ROOT / "./models/YOLOv8_Small_RDD.pt"
 download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=89569358)
 
 # STUN Server
-STUN_STRING = "stun:" + str(getSTUNServer())
-STUN_SERVER = [{"urls": [STUN_STRING]}]
+STUN_SERVER = [
+    {"urls": ["stun:stun.l.google.com:19302"]},
+    {"urls": ["stun:stun1.l.google.com:19302"]},
+]
 
 # Session-specific caching
 # Load the model
