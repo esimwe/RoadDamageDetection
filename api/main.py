@@ -3,10 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-import warnings
 import jwt
-warnings.filterwarnings("ignore", category=jwt.warnings.RemovedInPyjwt3Warning if hasattr(jwt, 'warnings') else UserWarning)
-from cryptography.hazmat.primitives import hashes
 import bcrypt
 import asyncpg
 import os
@@ -20,8 +17,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_DSN = os.getenv("DATABASE_URL", "postgresql://turna@localhost:5432/yol_hasar")
-JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026-bursa")
+DB_DSN = os.getenv("DATABASE_URL", "postgresql://turna:turna@localhost:5432/yol_hasar")
+JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026-bursa-bursa")
 JWT_EXP_HOURS = 8
 
 security = HTTPBearer()
@@ -57,6 +54,11 @@ def token_dogrula(credentials: HTTPAuthorizationCredentials = Depends(security))
 class LoginIstek(BaseModel):
     kullanici_adi: str
     sifre: str
+
+class KonumIstek(BaseModel):
+    lat: float
+    lon: float
+    plaka: str
 
 # ── ENDPOINTLER ─────────────────────────────────────────
 @app.post("/api/login")
@@ -138,6 +140,17 @@ async def durum_guncelle(detection_id: int, durum: str, kullanici=Depends(token_
     if durum not in ("yeni", "incelemede", "tamamlandi", "reddedildi"):
         raise HTTPException(status_code=400, detail="Geçersiz durum")
     await db.execute("UPDATE detections SET durum = $1 WHERE id = $2", durum, detection_id)
+    return {"ok": True}
+
+@app.post("/api/konum")
+async def konum_guncelle(istek: KonumIstek, db=Depends(get_db)):
+    arac = await db.fetchrow("SELECT id FROM vehicles WHERE plaka = $1", istek.plaka)
+    if not arac:
+        raise HTTPException(status_code=404, detail="Araç bulunamadı")
+    await db.execute(
+        "UPDATE vehicles SET son_lat=$1, son_lon=$2, son_gorulme=NOW() WHERE plaka=$3",
+        istek.lat, istek.lon, istek.plaka
+    )
     return {"ok": True}
 
 @app.get("/api/health")
