@@ -382,15 +382,15 @@
       <div class="ozet-kartlar">
         <div class="ozet-kart toplam">
           <div class="sol">
-            <div class="sayi">247</div>
+            <div class="sayi" id="dash-toplam">—</div>
             <div class="etiket">Toplam Tespit</div>
-            <div class="alt">Bu ay</div>
+            <div class="alt">Tüm zamanlar</div>
           </div>
           <div class="ikon">📍</div>
         </div>
         <div class="ozet-kart kritik">
           <div class="sol">
-            <div class="sayi">38</div>
+            <div class="sayi" id="dash-kritik">—</div>
             <div class="etiket">Kritik Hasar</div>
             <div class="alt">Acil müdahale bekliyor</div>
           </div>
@@ -398,17 +398,17 @@
         </div>
         <div class="ozet-kart onarilan">
           <div class="sol">
-            <div class="sayi">183</div>
+            <div class="sayi" id="dash-onarilan">—</div>
             <div class="etiket">Onarılan</div>
-            <div class="alt">%74 tamamlanma</div>
+            <div class="alt">Tamamlanan tespitler</div>
           </div>
           <div class="ikon">✅</div>
         </div>
         <div class="ozet-kart arac">
           <div class="sol">
-            <div class="sayi">12</div>
+            <div class="sayi" id="dash-arac">—</div>
             <div class="etiket">Aktif Araç</div>
-            <div class="alt">Sahada tarama yapıyor</div>
+            <div class="alt">Son 10 dakikada aktif</div>
           </div>
           <div class="ikon">🚌</div>
         </div>
@@ -494,9 +494,9 @@
         </div>
         <div class="detay-bilgi" id="detay-bilgi"></div>
         <div class="durum-butonlar">
-          <button class="durum-btn btn-incelendi">✓ İncelendi Olarak İşaretle</button>
-          <button class="durum-btn btn-onarildi">🔧 Onarıldı Olarak İşaretle</button>
-          <button class="durum-btn btn-urgent">🚨 Acil Ekip Gönder</button>
+          <button class="durum-btn btn-incelendi" onclick="durumGuncelle('incelemede')">✓ İncelendi Olarak İşaretle</button>
+          <button class="durum-btn btn-onarildi" onclick="durumGuncelle('tamamlandi')">🔧 Onarıldı Olarak İşaretle</button>
+          <button class="durum-btn btn-urgent" onclick="durumGuncelle('yeni')">🚨 Acil — Yeniye Al</button>
           <button class="durum-btn btn-maps" id="maps-btn" onclick="googleMapsAc()">📍 Google Maps'te Aç</button>
         </div>
       </div>
@@ -637,20 +637,65 @@
 // ══════════════════════════════════
 // VERİ
 // ══════════════════════════════════
-const hasarlar = [
-  {id:1,tip:"Çukur",seviye:"kritik",adres:"Nilüfer, Görükle Cad. No:45",tarih:"14.04.2026 08:23",koordinat:[40.2121,28.9779],arac:"16 BUS 042",guveni:"%94",boyut:"Büyük (>30cm)",durum:"Bekliyor"},
-  {id:2,tip:"Boyuna Çatlak",seviye:"orta",adres:"Osmangazi, Fevzi Çakmak Cad.",tarih:"14.04.2026 07:55",koordinat:[40.1956,29.0601],arac:"16 BUS 017",guveni:"%87",boyut:"Orta (15-30cm)",durum:"İncelendi"},
-  {id:3,tip:"Timsah Derisi Çatlak",seviye:"kritik",adres:"Yıldırım, Millet Cad. No:112",tarih:"14.04.2026 07:41",koordinat:[40.2033,29.0812],arac:"16 BUS 031",guveni:"%91",boyut:"Büyük (>30cm)",durum:"Bekliyor"},
-  {id:4,tip:"Enine Çatlak",seviye:"hafif",adres:"Nilüfer, Beşevler Kavşağı",tarih:"14.04.2026 07:18",koordinat:[40.2287,28.9942],arac:"16 BUS 008",guveni:"%79",boyut:"Küçük (<15cm)",durum:"Onarıldı"},
-  {id:5,tip:"Çukur",seviye:"orta",adres:"Osmangazi, Atatürk Cad. No:78",tarih:"14.04.2026 06:52",koordinat:[40.1834,29.0501],arac:"16 BUS 055",guveni:"%88",boyut:"Orta (15-30cm)",durum:"Bekliyor"},
-  {id:6,tip:"Boyuna Çatlak",seviye:"hafif",adres:"Mudanya Yolu, 5. km",tarih:"14.04.2026 06:30",koordinat:[40.2401,28.9201],arac:"16 BUS 022",guveni:"%82",boyut:"Küçük (<15cm)",durum:"Onarıldı"},
-  {id:7,tip:"Çukur",seviye:"kritik",adres:"Yıldırım, Sigorta Cad.",tarih:"14.04.2026 06:11",koordinat:[40.1978,29.0934],arac:"16 BUS 039",guveni:"%96",boyut:"Büyük (>30cm)",durum:"Bekliyor"},
-  {id:8,tip:"Enine Çatlak",seviye:"orta",adres:"Osmangazi, Hamitler Mah.",tarih:"14.04.2026 05:50",koordinat:[40.1755,29.0350],arac:"16 BUS 011",guveni:"%83",boyut:"Orta (15-30cm)",durum:"İncelendi"},
-  {id:9,tip:"Çukur",seviye:"hafif",adres:"Nilüfer, Özlüce Mah.",tarih:"14.04.2026 05:22",koordinat:[40.2350,28.9650],arac:"16 BUS 028",guveni:"%76",boyut:"Küçük (<15cm)",durum:"Onarıldı"},
-  {id:10,tip:"Timsah Derisi Çatlak",seviye:"kritik",adres:"Yıldırım, Hürriyet Mah.",tarih:"14.04.2026 04:45",koordinat:[40.2100,29.0700],arac:"16 BUS 044",guveni:"%93",boyut:"Büyük (>30cm)",durum:"Bekliyor"},
-];
-
+let hasarlar = [];
 let araclar = [];
+
+// API'den gelen tespit verisini UI formatına dönüştür
+function apiTespitDonustur(d) {
+  const tip = d.hasar_tipi || '';
+  let seviye = 'orta';
+  if (tip === 'Çukur' || tip === 'Ağ Çatlağı') seviye = 'kritik';
+  else if (tip === 'Boyuna Çatlak') seviye = 'hafif';
+  else if (tip === 'Enine Çatlak') seviye = 'orta';
+
+  const tarih = d.timestamp ? new Date(d.timestamp).toLocaleString('tr-TR', {day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  const durumMap = {'yeni':'Bekliyor','incelemede':'İncelendi','tamamlandi':'Onarıldı','reddedildi':'Reddedildi'};
+
+  return {
+    id: d.id,
+    tip: tip,
+    seviye: seviye,
+    adres: (d.lat && d.lon) ? `${parseFloat(d.lat).toFixed(4)}, ${parseFloat(d.lon).toFixed(4)}` : 'Konum yok',
+    tarih: tarih,
+    koordinat: (d.lat && d.lon) ? [parseFloat(d.lat), parseFloat(d.lon)] : null,
+    arac: d.plaka || d.kamera || 'Bilinmiyor',
+    guveni: d.guven_skoru ? `%${Math.round(d.guven_skoru * 100)}` : '-',
+    boyut: '-',
+    durum: durumMap[d.durum] || d.durum || 'Bekliyor',
+    _raw_durum: d.durum,
+    _raw_id: d.id,
+  };
+}
+
+async function verileriYukle() {
+  if (!aktifToken) return;
+  try {
+    const [dashRes, detRes] = await Promise.all([
+      fetch(API_URL + '/dashboard', { headers: { 'Authorization': 'Bearer ' + aktifToken } }),
+      fetch(API_URL + '/detections?limit=200', { headers: { 'Authorization': 'Bearer ' + aktifToken } })
+    ]);
+
+    if (dashRes.ok) {
+      const d = await dashRes.json();
+      const el = id => document.getElementById(id);
+      if (el('dash-toplam')) el('dash-toplam').textContent = d.toplam_tespit ?? 0;
+      if (el('dash-kritik')) el('dash-kritik').textContent = d.kritik_hasar ?? 0;
+      if (el('dash-onarilan')) el('dash-onarilan').textContent = d.tamamlandi ?? 0;
+      if (el('dash-arac')) el('dash-arac').textContent = d.aktif_arac ?? 0;
+    }
+
+    if (detRes.ok) {
+      const liste = await detRes.json();
+      hasarlar = liste.map(apiTespitDonustur);
+      haritaYenile();
+      listeGuncelle();
+      tabloOlustur();
+      grafiklerOlustur();
+    }
+  } catch(e) {
+    console.error('Veri yükleme hatası:', e);
+  }
+}
 
 // ══════════════════════════════════
 // LOGIN
@@ -668,9 +713,13 @@ function panelAc(kullanici_adi, ad_soyad, token) {
   document.getElementById('login-overlay').classList.add('gizli');
   document.getElementById('login-hata').classList.remove('gorünür');
   setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
+  verileriYukle();
   grafiklerOlustur();
   araclariYukle();
   konumTakibiBaslat();
+  // Her 30 saniyede bir yenile
+  if (window._veriInterval) clearInterval(window._veriInterval);
+  window._veriInterval = setInterval(verileriYukle, 30000);
 }
 
 async function girisYap() {
@@ -722,6 +771,7 @@ function konumTakibiBaslat() {
 
 function cikisYap() {
   if (konumInterval) { clearInterval(konumInterval); konumInterval = null; }
+  if (window._veriInterval) { clearInterval(window._veriInterval); window._veriInterval = null; }
   localStorage.removeItem('bbb_token');
   localStorage.removeItem('bbb_kullanici');
   aktifToken = '';
@@ -776,16 +826,29 @@ let aktifFiltre = 'tumu';
 let aktifItem = null;
 let secilenHasar = null;
 
-const isiVerisi = hasarlar.map(h => [h.koordinat[0], h.koordinat[1], h.seviye === 'kritik' ? 1.0 : h.seviye === 'orta' ? 0.6 : 0.3]);
-const isiKatmani = L.heatLayer(isiVerisi, {radius:35,blur:25,maxZoom:14});
+let isiKatmani = L.heatLayer([], {radius:35,blur:25,maxZoom:14});
 let isiModu = false;
 
-hasarlar.forEach(h => {
-  const m = L.marker(h.koordinat, {icon: ikonOlustur(h.seviye)})
-    .addTo(harita)
-    .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${h.tip}</div><div class="popup-satir">📍 ${h.adres}</div><div class="popup-satir">🕐 ${h.tarih}</div><div class="popup-satir">🚌 ${h.arac}</div><button class="popup-detay-btn" onclick="detayAc(${h.id})">Detayları Gör</button></div>`);
-  markerlar[h.id] = m;
-});
+function haritaYenile() {
+  // Eski marker'ları temizle
+  Object.values(markerlar).forEach(m => harita.removeLayer(m));
+  Object.keys(markerlar).forEach(k => delete markerlar[k]);
+
+  // Isı haritası verisini güncelle
+  const isiVerisi = hasarlar
+    .filter(h => h.koordinat)
+    .map(h => [h.koordinat[0], h.koordinat[1], h.seviye === 'kritik' ? 1.0 : h.seviye === 'orta' ? 0.6 : 0.3]);
+  isiKatmani.setLatLngs(isiVerisi);
+
+  // Yeni marker'ları ekle
+  hasarlar.forEach(h => {
+    if (!h.koordinat) return;
+    const m = L.marker(h.koordinat, {icon: ikonOlustur(h.seviye)})
+      .addTo(harita)
+      .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${h.tip}</div><div class="popup-satir">📍 ${h.adres}</div><div class="popup-satir">🕐 ${h.tarih}</div><div class="popup-satir">🚌 ${h.arac}</div><button class="popup-detay-btn" onclick="detayAc(${h.id})">Detayları Gör</button></div>`);
+    markerlar[h.id] = m;
+  });
+}
 
 function haritaGorunu(mod) {
   if (mod === 'isi') {
@@ -797,7 +860,11 @@ function haritaGorunu(mod) {
   } else {
     isiModu = false;
     harita.removeLayer(isiKatmani);
-    hasarlar.forEach(h => { if (aktifFiltre === 'tumu' || h.seviye === aktifFiltre) harita.addLayer(markerlar[h.id]); });
+    hasarlar.forEach(h => {
+      const m = markerlar[h.id];
+      if (!m) return;
+      if (aktifFiltre === 'tumu' || h.seviye === aktifFiltre) harita.addLayer(m);
+    });
     document.getElementById('btn-normal').style.cssText = 'background:#0066cc;color:white';
     document.getElementById('btn-isi').style.cssText = '';
   }
@@ -809,6 +876,7 @@ function filtrele(seviye, btn) {
   btn.classList.add('aktif');
   hasarlar.forEach(h => {
     const m = markerlar[h.id];
+    if (!m) return;
     if (seviye === 'tumu' || h.seviye === seviye) harita.addLayer(m);
     else harita.removeLayer(m);
   });
@@ -840,15 +908,14 @@ function detayAc(id) {
   aktifItem = id;
   listeGuncelle();
   document.getElementById('detay-baslik').textContent = h.tip;
+  const koordStr = h.koordinat ? `${h.koordinat[0].toFixed(4)}, ${h.koordinat[1].toFixed(4)}` : 'Konum yok';
   document.getElementById('detay-bilgi').innerHTML = `
     <div class="detay-satir"><span class="etiket">Hasar Tipi</span><span class="deger">${h.tip}</span></div>
     <div class="detay-satir"><span class="etiket">Şiddet</span><span class="deger"><span class="badge badge-${h.seviye}">${{kritik:'Kritik',orta:'Orta',hafif:'Hafif'}[h.seviye]}</span></span></div>
-    <div class="detay-satir"><span class="etiket">Adres</span><span class="deger">${h.adres}</span></div>
     <div class="detay-satir"><span class="etiket">Tarih / Saat</span><span class="deger">${h.tarih}</span></div>
     <div class="detay-satir"><span class="etiket">Araç</span><span class="deger">${h.arac}</span></div>
     <div class="detay-satir"><span class="etiket">AI Güveni</span><span class="deger">${h.guveni}</span></div>
-    <div class="detay-satir"><span class="etiket">Boyut</span><span class="deger">${h.boyut}</span></div>
-    <div class="detay-satir"><span class="etiket">Koordinat</span><span class="deger">${h.koordinat[0].toFixed(4)}, ${h.koordinat[1].toFixed(4)}</span></div>
+    <div class="detay-satir"><span class="etiket">Koordinat</span><span class="deger">${koordStr}</span></div>
     <div class="detay-satir"><span class="etiket">Durum</span><span class="deger">${h.durum}</span></div>
   `;
   document.getElementById('detay-panel').classList.add('acik');
@@ -856,7 +923,24 @@ function detayAc(id) {
   if (el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function detayKapat() { aktifItem = null; secilenHasar = null; document.getElementById('detay-panel').classList.remove('acik'); listeGuncelle(); }
-function googleMapsAc() { if (!secilenHasar) return; window.open(`https://www.google.com/maps?q=${secilenHasar.koordinat[0]},${secilenHasar.koordinat[1]}`,'_blank'); }
+function googleMapsAc() {
+  if (!secilenHasar || !secilenHasar.koordinat) return;
+  window.open(`https://www.google.com/maps?q=${secilenHasar.koordinat[0]},${secilenHasar.koordinat[1]}`,'_blank');
+}
+
+async function durumGuncelle(durum) {
+  if (!secilenHasar) return;
+  try {
+    await fetch(API_URL + '/detections/' + secilenHasar.id + '/durum?durum=' + durum, {
+      method: 'PATCH',
+      headers: { 'Authorization': 'Bearer ' + aktifToken }
+    });
+    await verileriYukle();
+    // Güncel veriyle detayı yenile
+    const h = hasarlar.find(x => x.id === secilenHasar.id);
+    if (h) { secilenHasar = h; detayAc(h.id); }
+  } catch(e) { console.error('Durum güncelleme hatası:', e); }
+}
 
 // ══════════════════════════════════
 // ARAÇ TAKİBİ HARİTASI
@@ -1091,60 +1175,99 @@ function tabloOlustur() {
 // ══════════════════════════════════
 // GRAFİKLER
 // ══════════════════════════════════
+let _grafikler = {};
+
 function grafiklerOlustur() {
-  // Haftalık
-  new Chart(document.getElementById('grafik-haftalik'), {
-    type:'line',
-    data:{
-      labels:['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'],
-      datasets:[{label:'Tespit',data:[28,42,35,51,38,44,29],borderColor:'#0066cc',backgroundColor:'rgba(0,102,204,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#0066cc'}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f4f8'}},x:{grid:{display:false}}}}
-  });
+  // Haftalık (statik çerçeve — gerçek zaman serisi API'de yok)
+  if (!_grafikler.haftalik) {
+    _grafikler.haftalik = new Chart(document.getElementById('grafik-haftalik'), {
+      type:'line',
+      data:{
+        labels:['Pzt','Sal','Çar','Per','Cum','Cmt','Paz'],
+        datasets:[{label:'Tespit',data:[0,0,0,0,0,0,0],borderColor:'#0066cc',backgroundColor:'rgba(0,102,204,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#0066cc'}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#f0f4f8'}},x:{grid:{display:false}}}}
+    });
+  }
 
-  // Dağılım (pasta)
-  new Chart(document.getElementById('grafik-dagilim'), {
-    type:'doughnut',
-    data:{
-      labels:['Çukur','Boyuna Çatlak','Enine Çatlak','Timsah Derisi'],
-      datasets:[{data:[35,28,20,17],backgroundColor:['#e53935','#f57c00','#43a047','#1565c0'],borderWidth:0}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8}}}}
-  });
+  // Dağılım (pasta) — gerçek veriden
+  const tipSayilari = {};
+  hasarlar.forEach(h => { tipSayilari[h.tip] = (tipSayilari[h.tip] || 0) + 1; });
+  const tipLabels = Object.keys(tipSayilari);
+  const tipData = tipLabels.map(k => tipSayilari[k]);
+  const tipRenkler = ['#e53935','#f57c00','#43a047','#1565c0','#7b1fa2','#0097a7'];
 
-  // İlçe bazlı
-  new Chart(document.getElementById('grafik-ilce'), {
-    type:'bar',
-    data:{
-      labels:['Nilüfer','Osmangazi','Yıldırım','Mudanya','Gemlik'],
-      datasets:[
-        {label:'Kritik',data:[12,8,15,3,2],backgroundColor:'#e53935'},
-        {label:'Orta',data:[18,14,12,5,4],backgroundColor:'#f57c00'},
-        {label:'Hafif',data:[25,20,18,8,6],backgroundColor:'#43a047'}
-      ]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:6}}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,beginAtZero:true,grid:{color:'#f0f4f8'}}}}
-  });
+  if (_grafikler.dagilim) {
+    _grafikler.dagilim.data.labels = tipLabels;
+    _grafikler.dagilim.data.datasets[0].data = tipData;
+    _grafikler.dagilim.update();
+  } else {
+    _grafikler.dagilim = new Chart(document.getElementById('grafik-dagilim'), {
+      type:'doughnut',
+      data:{
+        labels: tipLabels.length ? tipLabels : ['Veri yok'],
+        datasets:[{data: tipData.length ? tipData : [1], backgroundColor:tipRenkler, borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8}}}}
+    });
+  }
 
-  // Durum
-  new Chart(document.getElementById('grafik-durum'), {
-    type:'pie',
-    data:{
-      labels:['Bekliyor','İncelendi','Onarıldı'],
-      datasets:[{data:[38,26,183],backgroundColor:['#f57c00','#1565c0','#43a047'],borderWidth:0}]
-    },
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8}}}}
-  });
+  // Durum — gerçek veriden
+  const bekliyor = hasarlar.filter(h => h.durum === 'Bekliyor').length;
+  const incelendi = hasarlar.filter(h => h.durum === 'İncelendi').length;
+  const onarildi = hasarlar.filter(h => h.durum === 'Onarıldı').length;
+  const reddedildi = hasarlar.filter(h => h.durum === 'Reddedildi').length;
+
+  if (_grafikler.durum) {
+    _grafikler.durum.data.datasets[0].data = [bekliyor, incelendi, onarildi, reddedildi];
+    _grafikler.durum.update();
+  } else {
+    _grafikler.durum = new Chart(document.getElementById('grafik-durum'), {
+      type:'pie',
+      data:{
+        labels:['Bekliyor','İncelendi','Onarıldı','Reddedildi'],
+        datasets:[{data:[bekliyor, incelendi, onarildi, reddedildi],backgroundColor:['#f57c00','#1565c0','#43a047','#9e9e9e'],borderWidth:0}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10},padding:8}}}}
+    });
+  }
+
+  // İlçe bazlı (statik — koordinatlardan ilçe çıkarmak mümkün değil)
+  if (!_grafikler.ilce) {
+    _grafikler.ilce = new Chart(document.getElementById('grafik-ilce'), {
+      type:'bar',
+      data:{
+        labels:['Kritik','Orta','Hafif'],
+        datasets:[
+          {label:'Tespitler',
+           data:[hasarlar.filter(h=>h.seviye==='kritik').length, hasarlar.filter(h=>h.seviye==='orta').length, hasarlar.filter(h=>h.seviye==='hafif').length],
+           backgroundColor:['#e53935','#f57c00','#43a047']}
+        ]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,grid:{color:'#f0f4f8'}}}}
+    });
+  } else {
+    _grafikler.ilce.data.datasets[0].data = [
+      hasarlar.filter(h=>h.seviye==='kritik').length,
+      hasarlar.filter(h=>h.seviye==='orta').length,
+      hasarlar.filter(h=>h.seviye==='hafif').length
+    ];
+    _grafikler.ilce.update();
+  }
 }
 
 // ══════════════════════════════════
 // EXCEL İNDİR
 // ══════════════════════════════════
 function excelIndir() {
-  const basliklar = ['ID','Hasar Tipi','Adres','Şiddet','Araç','AI Güveni','Tarih','Durum'];
-  const satirlar = hasarlar.map(h => [h.id,h.tip,h.adres,h.seviye,h.arac,h.guveni,h.tarih,h.durum]);
+  const basliklar = ['ID','Hasar Tipi','Koordinat','Şiddet','Araç','AI Güveni','Tarih','Durum'];
+  const satirlar = hasarlar.map(h => [
+    h.id, h.tip,
+    h.koordinat ? h.koordinat.join(' ') : '',
+    h.seviye, h.arac, h.guveni, h.tarih, h.durum
+  ]);
   let csv = '\uFEFF' + basliklar.join(';') + '\n';
-  satirlar.forEach(s => { csv += s.join(';') + '\n'; });
+  satirlar.forEach(s => { csv += s.map(v => `"${String(v).replace(/"/g,'""')}"`).join(';') + '\n'; });
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1185,6 +1308,7 @@ saatGuncelle();
 // ══════════════════════════════════
 listeGuncelle();
 tabloOlustur();
+grafiklerOlustur();
 </script>
 </body>
 </html>
