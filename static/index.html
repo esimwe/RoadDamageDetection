@@ -6,7 +6,7 @@
   <title>Yol Hasar Tespit Sistemi — Bursa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -882,7 +882,7 @@ function aracListesiOlustur(liste) {
 
     if (konum) {
       const m = L.marker(konum, {icon: aracIkon}).addTo(haritaArac)
-        .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${a.plaka}</div><div class="popup-satir">🚌 ${a.model || ''}</div><div class="popup-satir">📡 Son konum</div></div>`);
+        .bindPopup(`<div class="popup-icerik"><div class="popup-baslik">${a.plaka}</div><div class="popup-satir">🚌 ${a.model || ''}</div><div class="popup-satir">📡 Son konum</div><br><button onclick="aracModalAc(window._araclar[${a.id}]); aracModalTab('kamera', document.querySelectorAll('.arac-modal-tab')[1]); kameraBaglan()" style="width:100%;padding:6px;background:#0066cc;color:white;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600">📷 Kamerayı İzle</button></div>`);
       aracMarkerlar[a.id] = m;
     }
 
@@ -952,6 +952,7 @@ function aracModalTabIcerik(tab) {
       <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Durum</span><span class="arac-bilgi-deger">${a.aktif ? '🟢 Aktif' : '🔴 Pasif'}</span></div>
       <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Son Konum</span><span class="arac-bilgi-deger">${konum}</span></div>
       <div class="arac-bilgi-satir"><span class="arac-bilgi-etiket">Son Görülme</span><span class="arac-bilgi-deger">${sonGorulme}</span></div>
+      <button class="arac-modal-btn mavi" style="margin-top:16px" onclick="aracModalTab('kamera', document.querySelectorAll('.arac-modal-tab')[1]); kameraBaglan()">📷 Kamerayı İzle</button>
     `;
   } else if (tab === 'kamera') {
     el.innerHTML = `
@@ -989,7 +990,8 @@ async function kameraBaglan() {
 
     if (livekitRoom) { await livekitRoom.disconnect(); livekitRoom = null; }
 
-    const LivekitClient = window.LivekitClient;
+    const LivekitClient = window.LivekitClient || window.LiveKit;
+    if (!LivekitClient) throw new Error('LiveKit SDK yüklenemedi');
     livekitRoom = new LivekitClient.Room();
 
     livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
