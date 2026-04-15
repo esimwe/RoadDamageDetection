@@ -37,7 +37,7 @@ async def get_db():
 # ── JWT ─────────────────────────────────────────────────
 def token_olustur(kullanici_id: int, kullanici_adi: str, rol: str) -> str:
     payload = {
-        "sub": kullanici_id,
+        "sub": str(kullanici_id),
         "kullanici_adi": kullanici_adi,
         "rol": rol,
         "exp": datetime.utcnow() + timedelta(hours=JWT_EXP_HOURS),
