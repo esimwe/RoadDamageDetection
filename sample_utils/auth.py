@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import streamlit.components.v1 as components
 from streamlit_cookies_manager import EncryptedCookieManager
 
 API_URL = "http://127.0.0.1:8502/api"
@@ -146,3 +147,34 @@ def kullanici_bilgisi():
     with col2:
         if st.button("Çıkış"):
             _cikis()
+
+def konum_takibi_baslat():
+    """Araç seçimi sonrası çağrılır. Konum izni alır ve periyodik gönderir."""
+    token = st.session_state.get("token", "")
+    arac = st.session_state.get("secilen_arac", {})
+    plaka = arac.get("plaka", "")
+    if not token or not plaka:
+        return
+    components.html(f"""
+    <script>
+    (function() {{
+        var TOKEN = "{token}";
+        var PLAKA = "{plaka}";
+        var API = "https://yol.turna.im/api/konum/benim";
+        function gonder(pos) {{
+            fetch(API, {{
+                method: "POST",
+                headers: {{"Content-Type": "application/json", "Authorization": "Bearer " + TOKEN}},
+                body: JSON.stringify({{lat: pos.coords.latitude, lon: pos.coords.longitude, plaka: PLAKA}})
+            }});
+        }}
+        function hata(e) {{ console.warn("Konum hatası:", e.message); }}
+        if (navigator.geolocation) {{
+            navigator.geolocation.getCurrentPosition(gonder, hata, {{enableHighAccuracy: true}});
+            setInterval(function() {{
+                navigator.geolocation.getCurrentPosition(gonder, hata, {{enableHighAccuracy: true}});
+            }}, 10000);
+        }}
+    }})();
+    </script>
+    """, height=0)

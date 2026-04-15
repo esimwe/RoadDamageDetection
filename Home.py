@@ -1,5 +1,5 @@
 import streamlit as st
-from sample_utils.auth import session_kontrol, kullanici_bilgisi
+from sample_utils.auth import session_kontrol, kullanici_bilgisi, konum_takibi_baslat
 
 st.set_page_config(
     page_title="Yol Hasar Tespit Sistemi",
@@ -8,6 +8,7 @@ st.set_page_config(
 
 session_kontrol()
 kullanici_bilgisi()
+konum_takibi_baslat()
 
 st.divider()
 st.title("Yol Hasar Tespit Sistemi")
