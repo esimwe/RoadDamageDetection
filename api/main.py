@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 DB_DSN = os.getenv("DATABASE_URL", "postgresql://turna:turna@localhost:5432/yol_hasar")
-LIVEKIT_URL = os.getenv("LIVEKIT_URL", "wss://turn.turna.im")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "wss://rtc.turna.im")
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "APIJdbJEJpErro2")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "13Xn1wdGlqeY1ELkE1E3e6VG26qFBzFAWVgeOHGDUReA")
 JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026-bursa-bursa")
