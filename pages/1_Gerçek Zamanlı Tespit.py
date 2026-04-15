@@ -39,7 +39,7 @@ MODEL_LOCAL_PATH = ROOT / "./models/YOLOv8_Small_RDD.pt"
 download_file(MODEL_URL, MODEL_LOCAL_PATH, expected_size=89569358)
 
 # Model yükle
-cache_key = "yolov8smallrdd"
+cache_key = "sky_model_rdd"
 if cache_key in st.session_state:
     net = st.session_state[cache_key]
 else:
@@ -87,71 +87,76 @@ def _livekit_token(room_name: str, identity: str, can_publish: bool) -> str:
     return token.to_jwt()
 
 def _agent_thread(room_name: str, vehicle_id: int, auth_token: str, score_threshold: float, stop_event: threading.Event):
-    """LiveKit odasına agent olarak katıl, frame'leri YOLO'dan geçir, API'ye gönder."""
+    """LiveKit odasına agent olarak katıl, frame'leri SKY Modeli'nden geçir, API'ye gönder."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    async def process_video(track, last_frame_time_ref):
+        video_stream = rtc.VideoStream(track)
+        async for frame_event in video_stream:
+            if stop_event.is_set():
+                break
+            now = time.time()
+            if now - last_frame_time_ref[0] < 2.0:
+                continue
+            last_frame_time_ref[0] = now
+            try:
+                frame = frame_event.frame
+                arr = np.frombuffer(frame.data, dtype=np.uint8).reshape(frame.height, frame.width, 4)
+                bgr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+                h, w = bgr.shape[:2]
+                resized = cv2.resize(bgr, (640, 640), interpolation=cv2.INTER_AREA)
+                results = net.predict(resized, conf=score_threshold, verbose=False)
+                out = cv2.resize(resized, (w, h), interpolation=cv2.INTER_AREA)
+                for result in results:
+                    for box in result.boxes.cpu():
+                        cls_id = int(box.cls.item())
+                        score = float(box.conf.item())
+                        coords = box.xyxy[0].numpy().astype(int)
+                        label = CLASSES[cls_id]
+                        sx, sy = w / 640, h / 640
+                        x1 = int(coords[0] * sx); y1 = int(coords[1] * sy)
+                        x2 = int(coords[2] * sx); y2 = int(coords[3] * sy)
+                        color = COLORS.get(cls_id, (255, 255, 255))
+                        cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
+                        out = draw_text_turkish(out, f"{label} %{int(score*100)}", x1, max(y1-26, 0), color)
+                _, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                _requests.post(
+                    f"{API_URL}/vehicles/{vehicle_id}/frame",
+                    headers={"Authorization": f"Bearer {auth_token}"},
+                    files={"file": ("frame.jpg", buf.tobytes(), "image/jpeg")},
+                    timeout=3
+                )
+            except Exception:
+                pass
+
     async def run():
-        agent_token = _livekit_token(room_name, "yolo-agent", can_publish=False)
+        agent_token = _livekit_token(room_name, "sky-agent", can_publish=False)
         room = rtc.Room()
-        last_frame_time = 0.0
+        last_frame_time_ref = [0.0]
+        video_tasks = []
 
         @room.on("track_subscribed")
         def on_track(track, publication, participant):
             if track.kind == rtc.TrackKind.KIND_VIDEO:
-                asyncio.ensure_future(process_video(track))
-
-        async def process_video(track: rtc.RemoteVideoTrack):
-            nonlocal last_frame_time
-            video_stream = rtc.VideoStream(track)
-            async for frame_event in video_stream:
-                if stop_event.is_set():
-                    break
-                now = time.time()
-                if now - last_frame_time < 2.0:
-                    continue
-                last_frame_time = now
-                try:
-                    frame = frame_event.frame
-                    # ARGB → BGR
-                    arr = np.frombuffer(frame.data, dtype=np.uint8).reshape(frame.height, frame.width, 4)
-                    bgr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
-
-                    h, w = bgr.shape[:2]
-                    resized = cv2.resize(bgr, (640, 640), interpolation=cv2.INTER_AREA)
-                    results = net.predict(resized, conf=score_threshold, verbose=False)
-                    out = cv2.resize(resized, (w, h), interpolation=cv2.INTER_AREA)
-
-                    for result in results:
-                        for box in result.boxes.cpu():
-                            cls_id = int(box.cls.item())
-                            score = float(box.conf.item())
-                            coords = box.xyxy[0].numpy().astype(int)
-                            label = CLASSES[cls_id]
-                            sx, sy = w / 640, h / 640
-                            x1, y1, x2, y2 = int(coords[0]*sx), int(coords[1]*sy), int(coords[2]*sx), int(coords[3]*sy)
-                            color = COLORS.get(cls_id, (255, 255, 255))
-                            cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
-                            out = draw_text_turkish(out, f"{label} %{int(score*100)}", x1, max(y1-26, 0), color)
-
-                    # API'ye gönder
-                    _, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 70])
-                    _requests.post(
-                        f"{API_URL}/vehicles/{vehicle_id}/frame",
-                        headers={"Authorization": f"Bearer {auth_token}"},
-                        files={"file": ("frame.jpg", buf.tobytes(), "image/jpeg")},
-                        timeout=3
-                    )
-                except Exception:
-                    pass
+                task = loop.create_task(process_video(track, last_frame_time_ref))
+                video_tasks.append(task)
 
         await room.connect(LIVEKIT_URL, agent_token)
         while not stop_event.is_set():
             await asyncio.sleep(0.5)
+        for t in video_tasks:
+            t.cancel()
         await room.disconnect()
 
-    asyncio.run(run())
+    try:
+        loop.run_until_complete(run())
+    finally:
+        loop.close()
 
 # --- UI ---
 st.title("Yol Hasar Tespiti - Gerçek Zamanlı")
-st.write("Kameranızı başlatın, YOLO hasarları tespit edip panele gönderecek.")
+st.write("Kameranızı başlatın, SKY Modeli hasarları tespit edip panele gönderecek.")
 
 arac = st.session_state.get("secilen_arac", {})
 vehicle_id = arac.get("id")
@@ -191,7 +196,7 @@ if durdur:
 running = st.session_state.get("_agent_running", False)
 
 if running:
-    st.success("Kamera aktif — YOLO çalışıyor")
+    st.success("Kamera aktif — SKY Modeli çalışıyor")
     # LiveKit JS client ile tarayıcıdan yayın
     components.html(f"""
 <!DOCTYPE html>
@@ -226,7 +231,7 @@ if running:
 
   videoTrack.attach(videoEl);
   await room.localParticipant.publishTrack(videoTrack);
-  statusEl.textContent = '✓ Kamera yayında — YOLO analiz ediyor';
+  statusEl.textContent = '✓ Kamera yayında — SKY Modeli analiz ediyor';
 }})();
 </script>
 </body>
