@@ -160,15 +160,22 @@ def _agent_thread(room_name: str, vehicle_id: int, auth_token: str, score_thresh
                 task = loop.create_task(process_video(track, last_frame_time_ref))
                 video_tasks.append(task)
 
+        import logging as _log
+        _log.getLogger(__name__).info(f"[SKY-AGENT] LiveKit'e bağlanıyor: {LIVEKIT_URL} oda={room_name}")
         await room.connect(LIVEKIT_URL, agent_token)
+        _log.getLogger(__name__).info(f"[SKY-AGENT] Bağlandı, track bekleniyor...")
         while not stop_event.is_set():
             await asyncio.sleep(0.5)
         for t in video_tasks:
             t.cancel()
         await room.disconnect()
+        _log.getLogger(__name__).info("[SKY-AGENT] Bağlantı kapatıldı")
 
     try:
         loop.run_until_complete(run())
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"[SKY-AGENT] hata: {e}", exc_info=True)
     finally:
         loop.close()
 
