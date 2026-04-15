@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import Response
 from pydantic import BaseModel
 from datetime import datetime, timedelta
 import jwt
@@ -8,6 +9,9 @@ import bcrypt
 import asyncpg
 import os
 from livekit.api import AccessToken, VideoGrants
+
+# Memory'de son frame'leri tut: {vehicle_id: bytes}
+_son_frameler: dict = {}
 
 app = FastAPI(title="Yol Hasar API")
 
@@ -214,6 +218,19 @@ async def snapshot_al(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depe
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Araç kamerası aktif değil: {str(e)}")
     return {"snapshot_url": None, "mesaj": "Snapshot için araç kamerasının aktif olması gerekiyor"}
+
+@app.post("/api/vehicles/{vehicle_id}/frame")
+async def frame_yukle(vehicle_id: int, kullanici=Depends(token_dogrula), file: UploadFile = File(...)):
+    veri = await file.read()
+    _son_frameler[vehicle_id] = veri
+    return {"ok": True}
+
+@app.get("/api/vehicles/{vehicle_id}/frame")
+async def frame_al(vehicle_id: int, kullanici=Depends(token_dogrula)):
+    veri = _son_frameler.get(vehicle_id)
+    if not veri:
+        raise HTTPException(status_code=404, detail="Frame yok")
+    return Response(content=veri, media_type="image/jpeg")
 
 @app.get("/api/health")
 async def health():

@@ -1,5 +1,8 @@
 import logging
 import queue
+import threading
+import time
+import requests as _requests
 from pathlib import Path
 from typing import List, NamedTuple
 
@@ -16,6 +19,10 @@ from ultralytics import YOLO
 from sample_utils.download import download_file
 from sample_utils.get_STUNServer import getSTUNServer
 from sample_utils.auth import session_kontrol
+
+API_URL = "http://127.0.0.1:8502/api"
+_frame_lock = threading.Lock()
+_son_frame = {"veri": None, "zaman": 0}
 
 st.set_page_config(
     page_title="Gerçek Zamanlı Tespit",
@@ -139,7 +146,34 @@ def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
 
     result_queue.put(detections)
 
+    # Her 2 saniyede bir işlenmiş frame'i API'ye gönder
+    simdi = time.time()
+    with _frame_lock:
+        son_zaman = _son_frame["zaman"]
+    if simdi - son_zaman > 2.0:
+        with _frame_lock:
+            _son_frame["veri"] = _image.copy()
+            _son_frame["zaman"] = simdi
+        threading.Thread(target=_frame_gonder, args=(_image.copy(),), daemon=True).start()
+
     return av.VideoFrame.from_ndarray(_image, format="bgr24")
+
+def _frame_gonder(image):
+    try:
+        arac = st.session_state.get("secilen_arac", {})
+        token = st.session_state.get("token", "")
+        vehicle_id = arac.get("id")
+        if not vehicle_id or not token:
+            return
+        _, buf = cv2.imencode(".jpg", image, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        _requests.post(
+            f"{API_URL}/vehicles/{vehicle_id}/frame",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("frame.jpg", buf.tobytes(), "image/jpeg")},
+            timeout=3
+        )
+    except Exception:
+        pass
 
 kamera_secim = st.radio("Kamera Seçimi", ["Arka Kamera", "Ön Kamera"], horizontal=True)
 facing_mode = "environment" if kamera_secim == "Arka Kamera" else "user"

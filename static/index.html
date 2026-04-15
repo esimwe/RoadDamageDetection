@@ -514,11 +514,11 @@
     </div>
 
     <!-- ════ ARAÇ MODAL ════ -->
-    <div id="arac-modal-overlay" onclick="if(event.target===this)aracModalKapat()">
+    <div id="arac-modal-overlay" onclick="if(event.target===this)aracModalKapatVeTemizle()">
       <div id="arac-modal">
         <div class="arac-modal-baslik">
           <h3 id="arac-modal-plaka">Araç Detayı</h3>
-          <button class="arac-modal-kapat" onclick="aracModalKapat()">✕</button>
+          <button class="arac-modal-kapat" onclick="aracModalKapatVeTemizle()">✕</button>
         </div>
         <div class="arac-modal-tabs">
           <button class="arac-modal-tab aktif" onclick="aracModalTab('bilgi',this)">Bilgi</button>
@@ -958,10 +958,10 @@ function aracModalTabIcerik(tab) {
     el.innerHTML = `
       <div class="kamera-alan" id="kamera-alan">
         <span style="font-size:32px">📷</span>
-        <span>Canlı görüntü bağlantısı kuruluyor...</span>
-        <span style="font-size:11px;color:#666">Araç kamerası aktif olmalı</span>
+        <span>Araç kamerası bekleniyor...</span>
+        <span style="font-size:11px;color:#666">Araç /app'te tespit başlatmalı</span>
       </div>
-      <button class="arac-modal-btn mavi" style="margin-top:12px" onclick="kameraBaglan()">Kameraya Bağlan</button>
+      <button class="arac-modal-btn mavi" style="margin-top:12px" onclick="kameraIzlemeBaslat()">Kamerayı İzle</button>
     `;
   } else if (tab === 'snapshot') {
     el.innerHTML = `
@@ -973,6 +973,38 @@ function aracModalTabIcerik(tab) {
       </div>
     `;
   }
+}
+
+let kameraInterval = null;
+
+function kameraIzlemeBaslat() {
+  const alan = document.getElementById('kamera-alan');
+  alan.innerHTML = '<span style="font-size:24px">⏳</span><span>Bağlanıyor...</span>';
+  if (kameraInterval) clearInterval(kameraInterval);
+  kameraInterval = setInterval(async () => {
+    try {
+      const res = await fetch(API_URL + '/vehicles/' + aktifArac.id + '/frame', {
+        headers: { 'Authorization': 'Bearer ' + aktifToken },
+        cache: 'no-store'
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const alan = document.getElementById('kamera-alan');
+        if (alan) {
+          alan.innerHTML = `<img src="${url}" style="width:100%;border-radius:8px" onload="URL.revokeObjectURL(this.src)" />`;
+        }
+      } else {
+        const alan = document.getElementById('kamera-alan');
+        if (alan) alan.innerHTML = '<span style="font-size:32px">📷</span><span>Araç kamerası aktif değil</span>';
+      }
+    } catch(e) {}
+  }, 2000);
+}
+
+function aracModalKapatVeTemizle() {
+  if (kameraInterval) { clearInterval(kameraInterval); kameraInterval = null; }
+  aracModalKapat();
 }
 
 let livekitRoom = null;
