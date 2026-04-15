@@ -6,6 +6,7 @@
   <title>Yol Hasar Tespit Sistemi — Bursa</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.min.js"></script>
   <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
@@ -951,12 +952,43 @@ function aracModalTabIcerik(tab) {
   }
 }
 
-function kameraBaglan() {
-  document.getElementById('kamera-alan').innerHTML = `
-    <span style="font-size:32px">📡</span>
-    <span>Kamera bağlantısı için LiveKit entegrasyonu gerekli</span>
-    <span style="font-size:11px;color:#888">Araç ID: ${aktifArac.id}</span>
-  `;
+let livekitRoom = null;
+
+async function kameraBaglan() {
+  const alan = document.getElementById('kamera-alan');
+  alan.innerHTML = '<span style="font-size:24px">⏳</span><span>Bağlanıyor...</span>';
+
+  try {
+    const res = await fetch(API_URL + '/vehicles/' + aktifArac.id + '/livekit-token', {
+      headers: { 'Authorization': 'Bearer ' + aktifToken }
+    });
+    if (!res.ok) throw new Error('Token alınamadı');
+    const { token, url, room } = await res.json();
+
+    if (livekitRoom) { await livekitRoom.disconnect(); livekitRoom = null; }
+
+    const LivekitClient = window.LivekitClient;
+    livekitRoom = new LivekitClient.Room();
+
+    livekitRoom.on(LivekitClient.RoomEvent.TrackSubscribed, (track) => {
+      if (track.kind === 'video') {
+        alan.innerHTML = '';
+        const videoEl = track.attach();
+        videoEl.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px';
+        alan.appendChild(videoEl);
+      }
+    });
+
+    livekitRoom.on(LivekitClient.RoomEvent.Disconnected, () => {
+      alan.innerHTML = '<span style="font-size:32px">📷</span><span>Bağlantı kesildi</span>';
+    });
+
+    await livekitRoom.connect(url, token);
+    alan.innerHTML = '<span style="font-size:24px">📡</span><span>Oda: ' + room + '</span><span style="font-size:11px;color:#aaa">Araç yayın başlatmayı bekliyor...</span>';
+
+  } catch(e) {
+    alan.innerHTML = '<span style="font-size:32px">❌</span><span>Bağlantı hatası: ' + e.message + '</span>';
+  }
 }
 
 async function snapshotAl() {

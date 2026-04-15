@@ -7,6 +7,7 @@ import jwt
 import bcrypt
 import asyncpg
 import os
+from livekit.api import AccessToken, VideoGrants
 
 app = FastAPI(title="Yol Hasar API")
 
@@ -18,6 +19,9 @@ app.add_middleware(
 )
 
 DB_DSN = os.getenv("DATABASE_URL", "postgresql://turna:turna@localhost:5432/yol_hasar")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "wss://turn.turna.im")
+LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY", "APIJdbJEJpErro2")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "13Xn1wdGlqeY1ELkE1E3e6VG26qFBzFAWVgeOHGDUReA")
 JWT_SECRET = os.getenv("JWT_SECRET", "yol-hasar-gizli-anahtar-2026-bursa-bursa")
 JWT_EXP_HOURS = 8
 
@@ -152,6 +156,19 @@ async def konum_guncelle(istek: KonumIstek, db=Depends(get_db)):
         istek.lat, istek.lon, istek.plaka
     )
     return {"ok": True}
+
+@app.get("/api/vehicles/{vehicle_id}/livekit-token")
+async def livekit_token(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    arac = await db.fetchrow("SELECT plaka FROM vehicles WHERE id = $1", vehicle_id)
+    if not arac:
+        raise HTTPException(status_code=404, detail="Araç bulunamadı")
+    oda_adi = f"arac-{arac['plaka'].replace(' ', '-')}"
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
+        .with_identity(f"panel-{kullanici['kullanici_adi']}") \
+        .with_name(kullanici['kullanici_adi']) \
+        .with_grants(VideoGrants(room_join=True, room=oda_adi, can_publish=False, can_subscribe=True)) \
+        .to_jwt()
+    return {"token": token, "url": LIVEKIT_URL, "room": oda_adi}
 
 @app.get("/api/health")
 async def health():
