@@ -86,8 +86,9 @@ async def login(istek: LoginIstek, db=Depends(get_db)):
     }
 
 @app.get("/api/me")
-async def me(kullanici=Depends(token_dogrula)):
-    return kullanici
+async def me(kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    row = await db.fetchrow("SELECT vehicle_id FROM users WHERE id = $1", int(kullanici['sub']))
+    return {**kullanici, "vehicle_id": row['vehicle_id'] if row else None}
 
 @app.get("/api/dashboard")
 async def dashboard(kullanici=Depends(token_dogrula), db=Depends(get_db)):
@@ -156,6 +157,20 @@ async def konum_guncelle(istek: KonumIstek, db=Depends(get_db)):
         istek.lat, istek.lon, istek.plaka
     )
     return {"ok": True}
+
+@app.post("/api/konum/benim")
+async def benim_konum(istek: KonumIstek, kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    row = await db.fetchrow(
+        "SELECT v.plaka FROM users u JOIN vehicles v ON u.vehicle_id = v.id WHERE u.id = $1",
+        int(kullanici['sub'])
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail="Kullanıcıya bağlı araç yok")
+    await db.execute(
+        "UPDATE vehicles SET son_lat=$1, son_lon=$2, son_gorulme=NOW() WHERE plaka=$3",
+        istek.lat, istek.lon, row['plaka']
+    )
+    return {"ok": True, "plaka": row['plaka']}
 
 @app.get("/api/vehicles/{vehicle_id}/livekit-token")
 async def livekit_token(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depends(get_db)):

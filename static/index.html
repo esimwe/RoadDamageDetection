@@ -670,6 +670,7 @@ function panelAc(kullanici_adi, ad_soyad, token) {
   setTimeout(() => { harita && harita.invalidateSize(); haritaArac && haritaArac.invalidateSize(); }, 200);
   grafiklerOlustur();
   araclariYukle();
+  konumTakibiBaslat();
 }
 
 async function girisYap() {
@@ -699,7 +700,28 @@ async function girisYap() {
   btn.disabled = false; btn.textContent = 'Giriş Yap';
 }
 
+let konumInterval = null;
+
+function konumTakibiBaslat() {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(() => {}, () => {}, {enableHighAccuracy: true});
+  if (konumInterval) clearInterval(konumInterval);
+  konumInterval = setInterval(async () => {
+    if (!aktifToken) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        await fetch(API_URL + '/konum/benim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + aktifToken },
+          body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude, plaka: '' })
+        });
+      } catch(e) {}
+    });
+  }, 10000);
+}
+
 function cikisYap() {
+  if (konumInterval) { clearInterval(konumInterval); konumInterval = null; }
   localStorage.removeItem('bbb_token');
   localStorage.removeItem('bbb_kullanici');
   aktifToken = '';
