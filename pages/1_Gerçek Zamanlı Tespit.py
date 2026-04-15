@@ -102,8 +102,19 @@ def _agent_thread(room_name: str, vehicle_id: int, auth_token: str, score_thresh
             last_frame_time_ref[0] = now
             try:
                 frame = frame_event.frame
-                arr = np.frombuffer(frame.data, dtype=np.uint8).reshape(frame.height, frame.width, 4)
-                bgr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+                raw = np.frombuffer(frame.data, dtype=np.uint8)
+                total = frame.height * frame.width
+                if raw.size == total * 4:
+                    arr = raw.reshape(frame.height, frame.width, 4)
+                    bgr = cv2.cvtColor(arr, cv2.COLOR_RGBA2BGR)
+                elif raw.size == total * 3 // 2:
+                    arr = raw.reshape(frame.height * 3 // 2, frame.width)
+                    bgr = cv2.cvtColor(arr, cv2.COLOR_YUV2BGR_I420)
+                elif raw.size == total * 3:
+                    arr = raw.reshape(frame.height, frame.width, 3)
+                    bgr = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+                else:
+                    continue
                 h, w = bgr.shape[:2]
                 resized = cv2.resize(bgr, (640, 640), interpolation=cv2.INTER_AREA)
                 results = net.predict(resized, conf=score_threshold, verbose=False)
