@@ -111,7 +111,7 @@ async def dashboard(kullanici=Depends(token_dogrula), db=Depends(get_db)):
 async def detections(limit: int = 50, kullanici=Depends(token_dogrula), db=Depends(get_db)):
     rows = await db.fetch(
         """
-        SELECT d.id, d.hasar_tipi, d.guven_skoru, d.lat, d.lon, d.durum, d.timestamp,
+        SELECT d.id, d.vehicle_id, d.hasar_tipi, d.guven_skoru, d.lat, d.lon, d.durum, d.timestamp,
                v.plaka, c.isim as kamera
         FROM detections d
         LEFT JOIN vehicles v ON d.vehicle_id = v.id
@@ -125,6 +125,7 @@ async def detections(limit: int = 50, kullanici=Depends(token_dogrula), db=Depen
     return [
         {
             "id": r["id"],
+            "vehicle_id": r["vehicle_id"],
             "hasar_tipi": hasar_adlari[r["hasar_tipi"]] if r["hasar_tipi"] < 4 else str(r["hasar_tipi"]),
             "guven_skoru": r["guven_skoru"],
             "lat": r["lat"],

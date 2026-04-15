@@ -653,6 +653,7 @@ function apiTespitDonustur(d) {
 
   return {
     id: d.id,
+    vehicle_id: d.vehicle_id,
     tip: tip,
     seviye: seviye,
     adres: (d.lat && d.lon) ? `${parseFloat(d.lat).toFixed(4)}, ${parseFloat(d.lon).toFixed(4)}` : 'Konum yok',
@@ -663,7 +664,6 @@ function apiTespitDonustur(d) {
     boyut: '-',
     durum: durumMap[d.durum] || d.durum || 'Bekliyor',
     _raw_durum: d.durum,
-    _raw_id: d.id,
   };
 }
 
@@ -921,6 +921,26 @@ function detayAc(id) {
   document.getElementById('detay-panel').classList.add('acik');
   const el = document.getElementById(`item-${id}`);
   if (el) el.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  // Araç kamerasından son işlenmiş kareyi çek
+  const fotoAlan = document.getElementById('detay-foto');
+  if (h.vehicle_id) {
+    fotoAlan.innerHTML = '<div style="font-size:12px;color:#9aaabb">Görüntü yükleniyor...</div>';
+    fetch(API_URL + '/vehicles/' + h.vehicle_id + '/frame', {
+      headers: { 'Authorization': 'Bearer ' + aktifToken },
+      cache: 'no-store'
+    }).then(r => {
+      if (r.ok) return r.blob();
+      throw new Error('frame yok');
+    }).then(blob => {
+      const url = URL.createObjectURL(blob);
+      fotoAlan.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:0" onload="URL.revokeObjectURL(this.src)" />`;
+    }).catch(() => {
+      fotoAlan.innerHTML = '<div style="font-size:36px">📷</div><div style="font-size:12px;color:#9aaabb">Araç kamerasından görüntü yok</div>';
+    });
+  } else {
+    fotoAlan.innerHTML = '<div style="font-size:36px">📷</div><div style="font-size:12px;color:#9aaabb">Araç bilgisi yok</div>';
+  }
 }
 function detayKapat() { aktifItem = null; secilenHasar = null; document.getElementById('detay-panel').classList.remove('acik'); listeGuncelle(); }
 function googleMapsAc() {
