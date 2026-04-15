@@ -9,6 +9,7 @@ COOKIE_PASSWORD = "bbb-yol-hasar-cookie-2026"
 def _get_cookies():
     cookies = EncryptedCookieManager(prefix="bbb_", password=COOKIE_PASSWORD)
     if not cookies.ready():
+        st.markdown("### ⏳ Yükleniyor...")
         st.stop()
     return cookies
 
@@ -57,18 +58,25 @@ def session_kontrol():
             st.session_state._token_dogrulandi = True
 
     if not st.session_state.get("token"):
+        # Cookie hazır değilse None geç, login ekranı yine de çalışır
+        cookies = None
         try:
-            cookies = _get_cookies()
+            c = EncryptedCookieManager(prefix="bbb_", password=COOKIE_PASSWORD)
+            if c.ready():
+                cookies = c
         except Exception:
-            cookies = None
+            pass
         _login_ekrani(cookies)
         st.stop()
 
     if not st.session_state.get("secilen_arac"):
+        cookies = None
         try:
-            cookies = _get_cookies()
+            c = EncryptedCookieManager(prefix="bbb_", password=COOKIE_PASSWORD)
+            if c.ready():
+                cookies = c
         except Exception:
-            cookies = None
+            pass
         _arac_secim_ekrani(cookies)
         st.stop()
 
@@ -151,15 +159,19 @@ def _arac_secim_ekrani(cookies=None):
         _cikis()
 
 def _cikis(cookies=None):
-    if cookies is None:
-        cookies = _get_cookies()
-    cookies["token"] = ""
-    cookies["kullanici"] = ""
-    cookies["secilen_arac"] = ""
-    cookies.save()
     st.session_state.token = None
     st.session_state.kullanici = None
     st.session_state.secilen_arac = None
+    st.session_state._token_dogrulandi = False
+    try:
+        if cookies is None:
+            cookies = _get_cookies()
+        cookies["token"] = ""
+        cookies["kullanici"] = ""
+        cookies["secilen_arac"] = ""
+        cookies.save()
+    except Exception:
+        pass
     st.rerun()
 
 def kullanici_bilgisi():
