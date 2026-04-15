@@ -121,12 +121,30 @@ def _agent_thread(room_name: str, vehicle_id: int, auth_token: str, score_thresh
                         cv2.rectangle(out, (x1, y1), (x2, y2), color, 2)
                         out = draw_text_turkish(out, f"{label} %{int(score*100)}", x1, max(y1-26, 0), color)
                 _, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                headers = {"Authorization": f"Bearer {auth_token}"}
+                # Frame'i panele gönder
                 _requests.post(
                     f"{API_URL}/vehicles/{vehicle_id}/frame",
-                    headers={"Authorization": f"Bearer {auth_token}"},
+                    headers=headers,
                     files={"file": ("frame.jpg", buf.tobytes(), "image/jpeg")},
                     timeout=3
                 )
+                # Tespitleri veritabanına kaydet
+                if results:
+                    tespitler = []
+                    for result in results:
+                        for box in result.boxes.cpu():
+                            tespitler.append({
+                                "hasar_tipi": int(box.cls.item()),
+                                "guven_skoru": round(float(box.conf.item()), 3)
+                            })
+                    if tespitler:
+                        _requests.post(
+                            f"{API_URL}/vehicles/{vehicle_id}/detections",
+                            headers={**headers, "Content-Type": "application/json"},
+                            json=tespitler,
+                            timeout=3
+                        )
             except Exception:
                 pass
 

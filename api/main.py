@@ -219,6 +219,32 @@ async def snapshot_al(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depe
         raise HTTPException(status_code=503, detail=f"Araç kamerası aktif değil: {str(e)}")
     return {"snapshot_url": None, "mesaj": "Snapshot için araç kamerasının aktif olması gerekiyor"}
 
+class TespitIstek(BaseModel):
+    hasar_tipi: int
+    guven_skoru: float
+    lat: float | None = None
+    lon: float | None = None
+
+@app.post("/api/vehicles/{vehicle_id}/detections")
+async def tespit_kaydet(vehicle_id: int, tespitler: list[TespitIstek], kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    if not tespitler:
+        return {"ok": True, "kayit": 0}
+    # Aracın son konumunu al
+    arac = await db.fetchrow("SELECT son_lat, son_lon FROM vehicles WHERE id = $1", vehicle_id)
+    son_lat = arac["son_lat"] if arac else None
+    son_lon = arac["son_lon"] if arac else None
+    kayit = 0
+    for t in tespitler:
+        lat = t.lat if t.lat is not None else son_lat
+        lon = t.lon if t.lon is not None else son_lon
+        await db.execute(
+            """INSERT INTO detections (vehicle_id, hasar_tipi, guven_skoru, lat, lon, durum, timestamp)
+               VALUES ($1, $2, $3, $4, $5, 'yeni', NOW())""",
+            vehicle_id, t.hasar_tipi, t.guven_skoru, lat, lon
+        )
+        kayit += 1
+    return {"ok": True, "kayit": kayit}
+
 @app.post("/api/vehicles/{vehicle_id}/frame")
 async def frame_yukle(vehicle_id: int, kullanici=Depends(token_dogrula), file: UploadFile = File(...)):
     veri = await file.read()
