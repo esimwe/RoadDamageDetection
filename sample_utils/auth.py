@@ -14,33 +14,41 @@ def _get_cookies():
 
 def session_kontrol():
     """Her sayfanın başında çağrılır. Login yoksa login ekranı gösterir, varsa devam eder."""
-    cookies = _get_cookies()
+    import json
+    cookies = _get_cookies()  # ready() false ise zaten st.stop() yapıyor
 
-    # Cookie'den session_state'e yükle
-    if "token" not in st.session_state:
-        st.session_state.token = cookies.get("token") or None
-    if "kullanici" not in st.session_state:
-        import json
+    # Cookie'den session_state'e yükle (her render'da taze oku)
+    if not st.session_state.get("token"):
+        raw = cookies.get("token")
+        st.session_state.token = raw if raw else None
+    if not st.session_state.get("kullanici"):
         raw = cookies.get("kullanici")
-        st.session_state.kullanici = json.loads(raw) if raw else None
-    if "secilen_arac" not in st.session_state:
-        import json
+        try:
+            st.session_state.kullanici = json.loads(raw) if raw else None
+        except Exception:
+            st.session_state.kullanici = None
+    if not st.session_state.get("secilen_arac"):
         raw = cookies.get("secilen_arac")
-        st.session_state.secilen_arac = json.loads(raw) if raw else None
+        try:
+            st.session_state.secilen_arac = json.loads(raw) if raw else None
+        except Exception:
+            st.session_state.secilen_arac = None
 
-    # Token varsa API'den doğrula
-    if st.session_state.token:
+    # Token varsa sadece süresi dolmuşsa çıkış yaptır (her render'da API çağırma)
+    if st.session_state.token and not st.session_state.get("_token_dogrulandi"):
         try:
             res = requests.get(
                 f"{API_URL}/me",
                 headers={"Authorization": f"Bearer {st.session_state.token}"},
                 timeout=3
             )
-            if res.status_code != 200:
+            if res.status_code == 200:
+                st.session_state._token_dogrulandi = True
+            else:
                 _cikis(cookies)
                 return
         except Exception:
-            pass  # API erişilemiyorsa mevcut token'la devam et
+            st.session_state._token_dogrulandi = True  # API yoksa geçer
 
     if not st.session_state.token:
         _login_ekrani(cookies)

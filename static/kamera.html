@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Araç Kamera Yayını</title>
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: white; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+    h2 { font-size: 18px; margin-bottom: 4px; }
+    .kucuk { font-size: 12px; color: #aaa; margin-bottom: 24px; }
+    input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #1a1a1a; color: white; font-size: 14px; margin-bottom: 12px; }
+    button { width: 100%; padding: 14px; border-radius: 8px; border: none; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .btn-basla { background: #0066cc; color: white; }
+    .btn-dur { background: #cc2200; color: white; }
+    .btn-basla:disabled { background: #333; color: #666; }
+    #durum { margin: 16px 0; font-size: 13px; color: #aaa; text-align: center; }
+    #durum.aktif { color: #4caf50; }
+    #durum.hata { color: #f44336; }
+    video { width: 100%; max-width: 480px; border-radius: 12px; margin-top: 16px; background: #111; }
+    .kart { width: 100%; max-width: 400px; }
+  </style>
+</head>
+<body>
+  <div class="kart">
+    <h2>🚌 Araç Kamera Yayını</h2>
+    <p class="kucuk">Bursa Büyükşehir Belediyesi — Yol Hasar Tespit</p>
+
+    <div id="giris-form">
+      <input type="text" id="kullanici" placeholder="Kullanıcı Adı" />
+      <input type="password" id="sifre" placeholder="Şifre" />
+      <button class="btn-basla" onclick="girisYap()">Giriş Yap</button>
+    </div>
+
+    <div id="yayin-form" style="display:none">
+      <div id="durum">Kamera başlatılıyor...</div>
+      <video id="onizleme" autoplay muted playsinline></video>
+      <br><br>
+      <button class="btn-dur" onclick="yayinDur()">Yayını Durdur</button>
+    </div>
+  </div>
+
+  <script>
+    const API = 'https://yol.turna.im/api';
+    let token = null;
+    let plaka = null;
+    let room = null;
+
+    async function girisYap() {
+      const k = document.getElementById('kullanici').value;
+      const s = document.getElementById('sifre').value;
+      if (!k || !s) { alert('Kullanıcı adı ve şifre girin'); return; }
+
+      try {
+        const res = await fetch(API + '/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ kullanici_adi: k, sifre: s })
+        });
+        if (!res.ok) { alert('Giriş başarısız'); return; }
+        const veri = await res.json();
+        token = veri.token;
+
+        // kullanıcının aracını al
+        const me = await fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + token } });
+        const meveri = await me.json();
+
+        if (!meveri.vehicle_id) { alert('Bu kullanıcıya bağlı araç yok'); return; }
+
+        // araç bilgisini al
+        const vres = await fetch(API + '/vehicles', { headers: { 'Authorization': 'Bearer ' + token } });
+        const araclar = await vres.json();
+        const arac = araclar.find(a => a.id === meveri.vehicle_id);
+        if (!arac) { alert('Araç bulunamadı'); return; }
+        plaka = arac.plaka;
+
+        document.getElementById('giris-form').style.display = 'none';
+        document.getElementById('yayin-form').style.display = 'block';
+        yayinBaslat();
+      } catch(e) {
+        alert('Bağlantı hatası: ' + e.message);
+      }
+    }
+
+    async function yayinBaslat() {
+      const durum = document.getElementById('durum');
+      durum.textContent = 'Kamera açılıyor...';
+      durum.className = '';
+
+      try {
+        // LiveKit token al
+        const me = await fetch(API + '/me', { headers: { 'Authorization': 'Bearer ' + token } });
+        const meveri = await me.json();
+        const vehicle_id = meveri.vehicle_id;
+
+        const tkres = await fetch(API + '/vehicles/' + vehicle_id + '/livekit-token-publish', {
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!tkres.ok) throw new Error('LiveKit token alınamadı');
+        const { token: lvtoken, url, room: odaAdi } = await tkres.json();
+
+        // Kamera stream al
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        document.getElementById('onizleme').srcObject = stream;
+
+        // LiveKit'e bağlan ve yayınla
+        const LC = window.LivekitClient || window.LiveKit;
+        room = new LC.Room();
+        await room.connect(url, lvtoken);
+
+        const videoTrack = LC.createLocalVideoTrack ?
+          await LC.createLocalVideoTrack({ facingMode: 'environment' }) :
+          LC.LocalVideoTrack ? new LC.LocalVideoTrack(stream.getVideoTracks()[0]) : null;
+
+        if (videoTrack) {
+          await room.localParticipant.publishTrack(videoTrack);
+        }
+
+        durum.textContent = '🔴 Yayın aktif — ' + odaAdi;
+        durum.className = 'aktif';
+
+        // Konum da gönder
+        konumGonder();
+        setInterval(konumGonder, 10000);
+
+      } catch(e) {
+        document.getElementById('durum').textContent = 'Hata: ' + e.message;
+        document.getElementById('durum').className = 'hata';
+      }
+    }
+
+    function konumGonder() {
+      if (!navigator.geolocation || !token || !plaka) return;
+      navigator.geolocation.getCurrentPosition(pos => {
+        fetch(API + '/konum/benim', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ lat: pos.coords.latitude, lon: pos.coords.longitude, plaka: plaka })
+        });
+      });
+    }
+
+    async function yayinDur() {
+      if (room) { await room.disconnect(); room = null; }
+      const video = document.getElementById('onizleme');
+      if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); }
+      document.getElementById('durum').textContent = 'Yayın durduruldu';
+      document.getElementById('durum').className = '';
+    }
+  </script>
+</body>
+</html>

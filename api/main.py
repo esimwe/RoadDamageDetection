@@ -185,6 +185,19 @@ async def livekit_token(vehicle_id: int, kullanici=Depends(token_dogrula), db=De
         .to_jwt()
     return {"token": token, "url": LIVEKIT_URL, "room": oda_adi}
 
+@app.get("/api/vehicles/{vehicle_id}/livekit-token-publish")
+async def livekit_token_publish(vehicle_id: int, kullanici=Depends(token_dogrula), db=Depends(get_db)):
+    arac = await db.fetchrow("SELECT plaka FROM vehicles WHERE id = $1", vehicle_id)
+    if not arac:
+        raise HTTPException(status_code=404, detail="Araç bulunamadı")
+    oda_adi = f"arac-{arac['plaka'].replace(' ', '-')}"
+    token = AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
+        .with_identity(f"arac-{arac['plaka']}") \
+        .with_name(arac['plaka']) \
+        .with_grants(VideoGrants(room_join=True, room=oda_adi, can_publish=True, can_subscribe=False)) \
+        .to_jwt()
+    return {"token": token, "url": LIVEKIT_URL, "room": oda_adi}
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "zaman": datetime.utcnow().isoformat()}
