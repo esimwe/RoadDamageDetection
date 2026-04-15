@@ -241,14 +241,52 @@ if running:
 <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
 <style>
   body {{ margin:0; background:#000; }}
-  video {{ width:100%; max-height:400px; border-radius:8px; }}
+  #container {{ position:relative; width:100%; }}
+  video {{ width:100%; max-height:400px; border-radius:8px; display:block; }}
+  #processedImg {{ width:100%; max-height:400px; border-radius:8px; display:none; object-fit:contain; }}
   #status {{ color:#0f0; font-family:monospace; padding:4px 8px; font-size:12px; }}
+  #toggleBtn {{ background:#333; color:#fff; border:1px solid #555; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; margin:4px 8px; }}
 </style>
 </head>
 <body>
 <div id="status">Bağlanıyor...</div>
-<video id="localVideo" autoplay muted playsinline></video>
+<div id="container">
+  <video id="localVideo" autoplay muted playsinline></video>
+  <img id="processedImg" alt="İşlenmiş görüntü" />
+</div>
+<button id="toggleBtn" onclick="toggleView()">📷 Ham / 🔍 İşlenmiş</button>
 <script>
+var showProcessed = false;
+function toggleView() {{
+  showProcessed = !showProcessed;
+  document.getElementById('localVideo').style.display = showProcessed ? 'none' : 'block';
+  document.getElementById('processedImg').style.display = showProcessed ? 'block' : 'none';
+}}
+
+// İşlenmiş frame'i 2 sn'de bir API'den çek
+var AUTH_TOKEN = "{auth_token}";
+var FRAME_URL = "https://yol.turna.im/api/vehicles/{vehicle_id}/frame";
+function fetchProcessed() {{
+  fetch(FRAME_URL, {{ headers: {{ "Authorization": "Bearer " + AUTH_TOKEN }} }})
+    .then(function(r) {{
+      if (r.ok) {{
+        return r.blob();
+      }}
+    }})
+    .then(function(blob) {{
+      if (blob) {{
+        var url = URL.createObjectURL(blob);
+        var img = document.getElementById('processedImg');
+        var old = img.src;
+        img.src = url;
+        if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+      }}
+    }})
+    .catch(function() {{}});
+}}
+setInterval(fetchProcessed, 2000);
+fetchProcessed();
+
 (async () => {{
   const {{ Room, RoomEvent, createLocalVideoTrack }} = LivekitClient;
   const room = new Room();
